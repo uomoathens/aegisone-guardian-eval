@@ -1,0 +1,71 @@
+name: ember2024-benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_type:
+        description: "EMBER2024 file type (Win64 and Win32 need a larger runner than the free one)"
+        type: choice
+        options: [Dot_Net, Win64, Win32]
+        default: Dot_Net
+  push:
+    branches: [main]
+    paths:
+      - training/ember2024.py
+      - .github/workflows/ember2024.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ember2024
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      FILE_TYPE: ${{ inputs.file_type || 'Dot_Net' }}
+      DATA: ${{ github.workspace }}/../ember-data
+      HF_HUB_CACHE: ${{ github.workspace }}/../hf-cache
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h
+          free -h
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install -r requirements-ember.txt
+          python -c "import thrember; assert thrember.PEFeatureExtractor().dim == 2568"
+      - name: Download
+        env:
+          TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then export HF_TOKEN="$TOKEN"; fi
+          python training/ember2024.py download --data "$DATA" --file-type "$FILE_TYPE"
+          ls -la "$DATA"
+          df -h
+      - name: Vectorize
+        run: python training/ember2024.py vectorize --data "$DATA"
+      - name: Benchmark
+        run: python training/ember2024.py run --data "$DATA" --file-type "$FILE_TYPE" --out "results/ember2024-$FILE_TYPE"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ember2024-${{ env.FILE_TYPE }}
+          path: results/ember2024-${{ env.FILE_TYPE }}
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add "results/ember2024-$FILE_TYPE"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "EMBER2024 $FILE_TYPE benchmark results"
+          git pull --rebase
+          git push
