@@ -1,6 +1,6 @@
 {
   "label": "EMBER2024 Dot_Net",
-  "generated_at_utc": "2026-10-13T10:41:05Z",
+  "generated_at_utc": "2026-10-13T11:54:13Z",
   "quick_mode": false,
   "seed": 0,
   "lightgbm_params": {
@@ -108,7 +108,7 @@
       "lower": 0.1,
       "upper": 0.2,
       "count": 684,
-      "mean_score": 0.14851766043928374,
+      "mean_score": 0.14851766043928377,
       "observed_rate": 0.2777777777777778
     },
     {
@@ -116,7 +116,7 @@
       "lower": 0.2,
       "upper": 0.30000000000000004,
       "count": 472,
-      "mean_score": 0.24832263914142688,
+      "mean_score": 0.2483226391414269,
       "observed_rate": 0.3135593220338983
     },
     {
@@ -124,7 +124,7 @@
       "lower": 0.30000000000000004,
       "upper": 0.4,
       "count": 344,
-      "mean_score": 0.34748465057960803,
+      "mean_score": 0.34748465057960815,
       "observed_rate": 0.29651162790697677
     },
     {
