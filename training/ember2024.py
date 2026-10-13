@@ -36,6 +36,7 @@ EMBER_LGBM_PARAMS = {
     "lambda_l2": 1.0,
     "is_unbalance": True,
     "num_threads": 0,
+    "bin_construct_sample_cnt": 50000,
     "verbosity": -1,
 }
 QUICK_OVERRIDES = {"num_iterations": 25, "min_data_in_leaf": 2, "min_data_per_group": 1, "min_sum_hessian_in_leaf": 1e-6}
@@ -43,12 +44,43 @@ QUICK_OVERRIDES = {"num_iterations": 25, "min_data_in_leaf": 2, "min_data_per_gr
 
 @dataclass
 class Subset:
-    X: np.ndarray
+    source: np.ndarray
+    rows: np.ndarray
     y: np.ndarray
     sha256: np.ndarray
     observed: np.ndarray
     week: np.ndarray
     family: np.ndarray
+
+    def matrix(self, rows: np.ndarray | None = None) -> np.ndarray:
+        selected = self.rows if rows is None else rows
+        return np.ascontiguousarray(self.source[selected], dtype=np.float32)
+
+
+def log(message: str) -> None:
+    try:
+        import resource
+
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1024 * 1024)
+        suffix = f"  [peak memory {peak:.1f} GB]"
+    except ImportError:
+        suffix = ""
+    print(f"{datetime.now(timezone.utc).strftime('%H:%M:%S')} {message}{suffix}", flush=True)
+
+
+def vector_dim() -> int:
+    import thrember
+
+    return int(thrember.PEFeatureExtractor().dim)
+
+
+def open_vectors(data_dir: str, subset: str, dim: int) -> tuple[np.ndarray, np.ndarray]:
+    X = np.memmap(os.path.join(data_dir, f"X_{subset}.dat"), dtype=np.float32, mode="r")
+    if X.size % dim:
+        raise ValueError(f"X_{subset}.dat size is not a multiple of {dim}")
+    X = X.reshape(-1, dim)
+    y = np.memmap(os.path.join(data_dir, f"y_{subset}.dat"), dtype=np.int32, mode="r")
+    return X, y
 
 
 def jsonl_paths(data_dir: str, subset: str) -> list[str]:
@@ -79,23 +111,22 @@ def read_metadata(paths: list[str]) -> dict[str, np.ndarray]:
     }
 
 
-def load_subset(data_dir: str, subset: str, file_type: str) -> tuple[Subset, dict]:
-    import thrember
-
-    X, y = thrember.read_vectorized_features(data_dir, subset=subset)
+def load_subset(data_dir: str, subset: str, file_type: str, dim: int) -> tuple[Subset, dict]:
+    X, y = open_vectors(data_dir, subset, dim)
     meta = read_metadata(jsonl_paths(data_dir, subset))
     n = meta["sha256"].size
     if X.shape[0] != n or y.shape[0] != n:
         raise ValueError(f"{subset}: {X.shape[0]} vectors, {y.shape[0]} labels, {n} metadata rows")
     labelled = meta["label"] >= 0
-    if not np.array_equal(y[labelled].astype(np.int64), meta["label"][labelled]):
+    if not np.array_equal(np.asarray(y[labelled], dtype=np.int64), meta["label"][labelled]):
         raise ValueError(f"{subset}: vector labels do not match metadata order")
 
     keep = labelled & (meta["file_type"] == file_type)
     observed = meta["date"][keep].astype("datetime64[s]")
     week = ((observed - EMBER_START) // np.timedelta64(7, "D")).astype(np.int64)
     result = Subset(
-        X=np.ascontiguousarray(X[keep]),
+        source=X,
+        rows=np.flatnonzero(keep).astype(np.int64),
         y=meta["label"][keep],
         sha256=meta["sha256"][keep],
         observed=observed,
@@ -110,13 +141,20 @@ def load_subset(data_dir: str, subset: str, file_type: str) -> tuple[Subset, dic
         "benign": int((result.y == 0).sum()),
         "malicious": int((result.y == 1).sum()),
     }
-    del X, y
-    gc.collect()
     return result, audit
 
 
 def take(s: Subset, mask: np.ndarray) -> Subset:
-    return Subset(X=s.X[mask], y=s.y[mask], sha256=s.sha256[mask], observed=s.observed[mask], week=s.week[mask], family=s.family[mask])
+    return Subset(source=s.source, rows=s.rows[mask], y=s.y[mask], sha256=s.sha256[mask], observed=s.observed[mask], week=s.week[mask], family=s.family[mask])
+
+
+def predict(model, s: Subset, rows: np.ndarray | None = None, chunk: int = 20_000) -> np.ndarray:
+    selected = s.rows if rows is None else rows
+    out = np.empty(selected.size, dtype=np.float64)
+    for start in range(0, selected.size, chunk):
+        part = selected[start:start + chunk]
+        out[start:start + part.size] = model.predict(s.matrix(part))
+    return out
 
 
 def threshold_at_fpr(benign_scores: np.ndarray, target_fpr: float) -> float:
@@ -129,11 +167,24 @@ def threshold_at_fpr(benign_scores: np.ndarray, target_fpr: float) -> float:
     return float(np.nextafter(ordered[k], np.inf))
 
 
-def train(X: np.ndarray, y: np.ndarray, params: dict):
+def train(source: np.ndarray, rows: np.ndarray, y: np.ndarray, params: dict):
     import lightgbm as lgb
 
-    data = lgb.Dataset(X, y.astype(np.float64), categorical_feature=CATEGORICAL, free_raw_data=True)
-    return lgb.train(dict(params), data)
+    class RowSequence(lgb.Sequence):
+        batch_size = 4096
+
+        def __init__(self, data: np.ndarray, selected: np.ndarray):
+            self.data = data
+            self.selected = selected
+
+        def __len__(self) -> int:
+            return int(self.selected.size)
+
+        def __getitem__(self, index):
+            return np.asarray(self.data[self.selected[index]], dtype=np.float64)
+
+    dataset = lgb.Dataset(RowSequence(source, rows), np.asarray(y, dtype=np.float64), categorical_feature=CATEGORICAL, free_raw_data=True)
+    return lgb.train(dict(params), dataset)
 
 
 def rate_block(y: np.ndarray, scores: np.ndarray, threshold: float) -> dict:
@@ -178,10 +229,15 @@ def run(data_dir: str, file_type: str, validation_weeks: int, seed: int, quick: 
     if quick:
         params.update(QUICK_OVERRIDES)
 
-    train_all, train_audit = load_subset(data_dir, "train", file_type)
-    test, test_audit = load_subset(data_dir, "test", file_type)
-    challenge, challenge_audit = load_subset(data_dir, "challenge", file_type)
+    dim = vector_dim()
+    log(f"reading train metadata and vectors (dimension {dim})")
+    train_all, train_audit = load_subset(data_dir, "train", file_type, dim)
+    log(f"train rows used {train_audit['rows_used']:,}; reading test")
+    test, test_audit = load_subset(data_dir, "test", file_type, dim)
+    log(f"test rows used {test_audit['rows_used']:,}; reading challenge")
+    challenge, challenge_audit = load_subset(data_dir, "challenge", file_type, dim)
     challenge = take(challenge, challenge.y == 1)
+    log(f"challenge malicious rows {challenge.y.size:,}")
 
     train_weeks = np.unique(train_all.week)
     if train_weeks.size <= validation_weeks:
@@ -205,11 +261,20 @@ def run(data_dir: str, file_type: str, validation_weeks: int, seed: int, quick: 
     validation = take(validation, ~leak_val)
     test = take(test, ~leak_test)
     challenge = take(challenge, ~leak_challenge)
+    for name, part in (("validation", validation), ("test", test)):
+        if set(np.unique(part.y).tolist()) != {0, 1}:
+            raise ValueError(f"{name} partition lost a class after removing SHA-256 duplicates")
+    log(f"SHA-256 duplicates removed: validation {int(leak_val.sum()):,}, test {int(leak_test.sum()):,}, challenge {int(leak_challenge.sum()):,}")
 
-    model = train(fit.X, fit.y, params)
-    s_val = model.predict(validation.X)
-    s_test = model.predict(test.X)
-    s_chal = model.predict(challenge.X) if challenge.y.size else np.zeros(0)
+    log(f"training temporal model on {fit.y.size:,} rows")
+    model = train(fit.source, fit.rows, fit.y, params)
+    gc.collect()
+    log("scoring validation, test and challenge")
+    s_val = predict(model, validation)
+    s_test = predict(model, test)
+    s_chal = predict(model, challenge) if challenge.y.size else np.zeros(0)
+    del model
+    gc.collect()
 
     fit_families = set(fit.family[(fit.y == 1) & (fit.family != "")].tolist())
     unseen_test = (test.y == 1) & (test.family != "") & ~np.isin(test.family, list(fit_families))
@@ -219,17 +284,21 @@ def run(data_dir: str, file_type: str, validation_weeks: int, seed: int, quick: 
         rng = np.random.default_rng(seed)
         order = rng.permutation(train_all.y.size)
         cut = int(round(train_all.y.size * 0.85))
-        r_fit, r_val = order[:cut], order[cut:]
-        r_model = train(train_all.X[r_fit], train_all.y[r_fit], params)
+        r_fit, r_val = np.sort(order[:cut]), np.sort(order[cut:])
+        log(f"training random-split baseline on {r_fit.size:,} rows")
+        r_model = train(train_all.source, train_all.rows[r_fit], train_all.y[r_fit], params)
+        gc.collect()
+        log("scoring random-split baseline")
         random_model_scores = {
             "validation_y": train_all.y[r_val],
-            "validation": r_model.predict(train_all.X[r_val]),
-            "test": r_model.predict(test.X),
-            "challenge": r_model.predict(challenge.X) if challenge.y.size else np.zeros(0),
+            "validation": predict(r_model, train_all, train_all.rows[r_val]),
+            "test": predict(r_model, test),
+            "challenge": predict(r_model, challenge) if challenge.y.size else np.zeros(0),
         }
         del r_model
         gc.collect()
 
+    log("computing metrics")
     ece, reliability = E.expected_calibration_error(test.y, s_test)
     test_weeks = np.unique(test.week)
 
@@ -426,6 +495,7 @@ def main() -> None:
         vectorize(args.data)
     else:
         report = run(args.data, args.file_type, args.validation_weeks, args.seed, args.quick, not args.no_random_baseline)
+        log("writing report")
         os.makedirs(args.out, exist_ok=True)
         with open(os.path.join(args.out, "report.json"), "w", encoding="utf-8") as handle:
             json.dump(report, handle, indent=2, default=float)
