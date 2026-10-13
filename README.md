@@ -21,10 +21,35 @@ The reasoning behind each choice is in [METHODOLOGY.md](METHODOLOGY.md).
 | Feature schema v1 (48 features), Python and C# | Implemented; parity verified in CI |
 | Release dataset contract v2 (provenance per sample) | Implemented; self-tested |
 | Temporal evaluation with confidence bounds | Implemented; tested on synthetic drift data |
-| Public benchmark: EMBER2024 under the temporal protocol | Implemented and integration-tested; runs automatically in GitHub Actions and commits its results to `results/ember2024-Dot_Net/` |
+| Public benchmark: EMBER2024 under the temporal protocol | Run on the .NET subset; results below and in [results/ember2024-Dot_Net](results/ember2024-Dot_Net/report.md) |
 | Results on the AegisOne schema v1 corpus | Not yet published |
 
-Until the EMBER2024 run has completed, the only results in this repository are from synthetic data with built-in temporal drift ([results/synthetic-demo](results/synthetic-demo/report.md)). They demonstrate the pipeline and the effect of drift. They are not detection results and must not be cited as such.
+## Findings: EMBER2024, .NET subset
+
+**A threshold set on a random hold-out promised a 1% false-positive rate and delivered 4.1% on the following weeks; at a 0.1% target it delivered 1.55%, fifteen times the promise. Thresholds set on the eight weeks before the test period stayed within 0.11 percentage points of the target.**
+
+Data: 520,000 labelled .NET files first seen between 24 September 2023 and 21 September 2024 (fit: the first 44 weeks, 440,000 files; validation: the last 8 weeks, 80,000 files), tested on 120,000 files from the 12 following weeks (60,000 benign, 60,000 malicious) and on the 829 .NET files of EMBER2024's evasive challenge set. EMBER feature version 3, LightGBM with the dataset's reference settings, seed 0. No SHA-256 identity crossed a partition boundary.
+
+| Target FPR | Threshold chosen on | FPR where chosen | Test FPR (95% upper) | False alarms per 60,000 benign | Test TPR | Challenge TPR | Unseen-family TPR |
+|---|---|---|---|---|---|---|---|
+| 1% | Random 15% hold-out | 1.00% | **4.14%** (4.27%) | 2,482 | 99.2% | 92.8% | 97.9% |
+| 1% | Last 8 training weeks | 1.00% | **1.11%** (1.18%) | 666 | 95.7% | 79.6% | 94.3% |
+| 1% | Test set (oracle) | 1.00% | 1.00% (1.07%) | 600 | 95.3% | 78.5% | 93.5% |
+| 0.1% | Random 15% hold-out | 0.10% | **1.55%** (1.63%) | 928 | 97.4% | 85.2% | 95.6% |
+| 0.1% | Last 8 training weeks | 0.10% | **0.083%** (0.105%) | 50 | 82.8% | 62.2% | 76.3% |
+| 0.1% | Test set (oracle) | 0.10% | 0.10% (0.12%) | 60 | 83.4% | 62.8% | 76.6% |
+
+What the table shows:
+
+1. **Random validation misstates the cost of deployment.** The random hold-out shares weeks with the training data, so it looks easier than the future. The threshold it produces is far lower (0.155 against 0.925 at the 1% target), and on later weeks that threshold raises four to fifteen times the promised number of false alarms.
+2. **The higher detection rate of the random row is not a better model.** It is bought with those false alarms. At equal false-positive rates the two models are close: the temporal threshold detects 95.7% at 1.11% FPR, and the oracle 95.3% at 1.00%.
+3. **Eight weeks of recent data are a usable proxy for the future.** The temporal threshold lands within 0.11 percentage points of its target at 1% and below its target at 0.1%, with detection within 0.7 percentage points of the oracle.
+4. **Evasive and novel malware remain the hard cases.** At a 0.1% FPR the same threshold detects 82.8% of ordinary test malware, 76.3% of malware from families absent from training, and 62.2% of the challenge set.
+5. **Drift is visible week by week.** At the 1% target the weekly test FPR ranges from 0.45% to 3.26%, with the peak in the week of 3 November 2024. A threshold that is correct on average still needs monitoring.
+
+Limitations: one run, one seed and one file type, so the figures carry no estimate of run-to-run variation. The random hold-out model is trained on 85% of all 52 training weeks, including the eight used for temporal validation, so it differs from the temporal model in training data as well as in threshold. EMBER2024 is balanced between classes, unlike real endpoints, which is why false-positive rate rather than precision is reported. Labels come from VirusTotal detections and ClarAVy family assignment and may contain noise.
+
+The synthetic results in [results/synthetic-demo](results/synthetic-demo/report.md) only demonstrate the pipeline and must not be cited as detection results.
 
 ## Public benchmark: EMBER2024
 
@@ -53,7 +78,7 @@ On a real dataset that follows contract v2:
     python training/release_validation.py --dataset dataset-v2.npz
     python training/release_experiment.py --dataset dataset-v2.npz --out results/my-run
 
-EMBER2024 locally (needs `requirements-ember.txt`, about 7 GB of disk and 12 GB of memory for the .NET subset):
+EMBER2024 locally (needs `requirements-ember.txt`; the .NET subset runs on a standard 16 GB GitHub runner):
 
     python training/ember2024.py download --data ember-data --file-type Dot_Net
     python training/ember2024.py vectorize --data ember-data
