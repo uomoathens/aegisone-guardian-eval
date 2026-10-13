@@ -1,5 +1,7 @@
 # AegisOne Guardian: leakage-resistant evaluation of a static malware classifier
 
+**Dimitrios Sargiotis** · National Technical University of Athens · [users.ntua.gr/dims](https://users.ntua.gr/dims/)
+
 This repository contains the evaluation protocol, feature extractor and tooling behind the static file classifier of AegisOne, an endpoint protection prototype for Windows. It is published as a research artefact. The product itself is not included.
 
 The central claim is methodological. Static malware classifiers are routinely reported with random train/test splits, accuracy or AUC, and point estimates of the false-positive rate. Each of these flatters the model. This repository implements the alternative end to end and makes every step checkable:
