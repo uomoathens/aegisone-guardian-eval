@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "AegisOne Guardian: leakage-resistant evaluation of a static malware classifier"
+type: software
+authors:
+  - family-names: Sargiotis
+    given-names: Dimitrios
+    affiliation: "National Technical University of Athens"
+license: MIT
+version: 0.1.0
+date-released: "2026-10-13"
+keywords:
+  - malware detection
+  - machine learning evaluation
+  - temporal validation
+  - data leakage
+  - confidence intervals
+  - calibration

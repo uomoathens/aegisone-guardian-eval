@@ -1,0 +1,3 @@
+thrember @ git+https://github.com/FutureComputing4AI/EMBER2024.git
+signify==0.7.1
+oscrypto @ git+https://github.com/wbond/oscrypto.git

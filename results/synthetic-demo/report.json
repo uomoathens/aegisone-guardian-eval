@@ -1,0 +1,259 @@
+{
+  "label": "synthetic drift data (pipeline demonstration, not a detection result)",
+  "generated_at_utc": "2026-10-13T08:39:48Z",
+  "feature_schema_version": 1,
+  "dataset_contract_version": 2,
+  "seed": 42,
+  "split": {
+    "method": "temporal",
+    "train": 5040,
+    "validation": 1080,
+    "test": 1080,
+    "train_cutoff": "2026-03-25T00:00:00",
+    "validation_cutoff": "2026-04-12T00:00:00",
+    "sha256_cross_split_leakage": 0
+  },
+  "test_auc": 0.6868527932434977,
+  "test_brier": 0.13776443013107287,
+  "test_ece": 0.12257709545692001,
+  "reliability": [
+    {
+      "bin": 0,
+      "lower": 0.0,
+      "upper": 0.1,
+      "count": 886,
+      "mean_score": 0.009275871668638868,
+      "observed_rate": 0.11851015801354402
+    },
+    {
+      "bin": 1,
+      "lower": 0.1,
+      "upper": 0.2,
+      "count": 45,
+      "mean_score": 0.14216332687460534,
+      "observed_rate": 0.17777777777777778
+    },
+    {
+      "bin": 2,
+      "lower": 0.2,
+      "upper": 0.30000000000000004,
+      "count": 33,
+      "mean_score": 0.2436272458488113,
+      "observed_rate": 0.15151515151515152
+    },
+    {
+      "bin": 3,
+      "lower": 0.30000000000000004,
+      "upper": 0.4,
+      "count": 24,
+      "mean_score": 0.3464598928029727,
+      "observed_rate": 0.375
+    },
+    {
+      "bin": 4,
+      "lower": 0.4,
+      "upper": 0.5,
+      "count": 20,
+      "mean_score": 0.43765888340925774,
+      "observed_rate": 0.35
+    },
+    {
+      "bin": 5,
+      "lower": 0.5,
+      "upper": 0.6000000000000001,
+      "count": 15,
+      "mean_score": 0.556906294955069,
+      "observed_rate": 0.13333333333333333
+    },
+    {
+      "bin": 6,
+      "lower": 0.6000000000000001,
+      "upper": 0.7000000000000001,
+      "count": 5,
+      "mean_score": 0.6578014232892077,
+      "observed_rate": 0.2
+    },
+    {
+      "bin": 7,
+      "lower": 0.7000000000000001,
+      "upper": 0.8,
+      "count": 16,
+      "mean_score": 0.7469268216340041,
+      "observed_rate": 0.1875
+    },
+    {
+      "bin": 8,
+      "lower": 0.8,
+      "upper": 0.9,
+      "count": 16,
+      "mean_score": 0.854735912003421,
+      "observed_rate": 0.4375
+    },
+    {
+      "bin": 9,
+      "lower": 0.9,
+      "upper": 1.0,
+      "count": 20,
+      "mean_score": 0.9625995234174705,
+      "observed_rate": 0.75
+    }
+  ],
+  "operating_points": [
+    {
+      "target_tpr": 0.9,
+      "threshold": 0.001622912915461018,
+      "validation": {
+        "n": 1080,
+        "benign": 918,
+        "malicious": 162,
+        "fp": 457,
+        "tp": 146,
+        "fpr": 0.49782135076252726,
+        "tpr": 0.9012345679012346,
+        "fpr_upper_95": 0.525486432394535,
+        "tpr_lower_95": 0.8538601016350185
+      },
+      "test": {
+        "n": 1080,
+        "benign": 918,
+        "malicious": 162,
+        "fp": 491,
+        "tp": 127,
+        "fpr": 0.5348583877995643,
+        "tpr": 0.7839506172839507,
+        "fpr_upper_95": 0.5623695289475927,
+        "tpr_lower_95": 0.7239552626091734
+      },
+      "test_unseen_family_tpr": {
+        "n": 162,
+        "rate": 0.7839506172839507,
+        "bound_95": 0.7239552626091734,
+        "bound": "lower"
+      },
+      "test_unseen_publisher_fpr": {
+        "n": 918,
+        "rate": 0.5348583877995643,
+        "bound_95": 0.5623695289475927,
+        "bound": "upper"
+      }
+    },
+    {
+      "target_tpr": 0.95,
+      "threshold": 0.00017456560686227737,
+      "validation": {
+        "n": 1080,
+        "benign": 918,
+        "malicious": 162,
+        "fp": 722,
+        "tp": 154,
+        "fpr": 0.7864923747276689,
+        "tpr": 0.9506172839506173,
+        "fpr_upper_95": 0.8085793013485263,
+        "tpr_lower_95": 0.9126631951189921
+      },
+      "test": {
+        "n": 1080,
+        "benign": 918,
+        "malicious": 162,
+        "fp": 713,
+        "tp": 152,
+        "fpr": 0.7766884531590414,
+        "tpr": 0.9382716049382716,
+        "fpr_upper_95": 0.7991610974141523,
+        "tpr_lower_95": 0.8975445250546142
+      },
+      "test_unseen_family_tpr": {
+        "n": 162,
+        "rate": 0.9382716049382716,
+        "bound_95": 0.8975445250546142,
+        "bound": "lower"
+      },
+      "test_unseen_publisher_fpr": {
+        "n": 918,
+        "rate": 0.7766884531590414,
+        "bound_95": 0.7991610974141523,
+        "bound": "upper"
+      }
+    },
+    {
+      "target_tpr": 0.99,
+      "threshold": 4.04406252835021e-05,
+      "validation": {
+        "n": 1080,
+        "benign": 918,
+        "malicious": 162,
+        "fp": 823,
+        "tp": 161,
+        "fpr": 0.8965141612200436,
+        "tpr": 0.9938271604938271,
+        "fpr_upper_95": 0.9126325824494497,
+        "tpr_lower_95": 0.971053089127699
+      },
+      "test": {
+        "n": 1080,
+        "benign": 918,
+        "malicious": 162,
+        "fp": 827,
+        "tp": 161,
+        "fpr": 0.900871459694989,
+        "tpr": 0.9938271604938271,
+        "fpr_upper_95": 0.9166669929029367,
+        "tpr_lower_95": 0.971053089127699
+      },
+      "test_unseen_family_tpr": {
+        "n": 162,
+        "rate": 0.9938271604938271,
+        "bound_95": 0.971053089127699,
+        "bound": "lower"
+      },
+      "test_unseen_publisher_fpr": {
+        "n": 918,
+        "rate": 0.900871459694989,
+        "bound_95": 0.9166669929029367,
+        "bound": "upper"
+      }
+    }
+  ],
+  "top_features": [
+    {
+      "name": "mid_entropy",
+      "importance": 1167
+    },
+    {
+      "name": "header_entropy",
+      "importance": 1131
+    },
+    {
+      "name": "max_entropy",
+      "importance": 1102
+    },
+    {
+      "name": "overlay_ratio",
+      "importance": 1084
+    },
+    {
+      "name": "tail_entropy",
+      "importance": 1066
+    },
+    {
+      "name": "hist_24",
+      "importance": 945
+    },
+    {
+      "name": "hist_20",
+      "importance": 931
+    },
+    {
+      "name": "hist_31",
+      "importance": 915
+    },
+    {
+      "name": "hist_02",
+      "importance": 915
+    },
+    {
+      "name": "hist_21",
+      "importance": 912
+    }
+  ]
+}
