@@ -2,6 +2,8 @@
 
 **Dimitrios Sargiotis** · National Technical University of Athens · [users.ntua.gr/dims](https://users.ntua.gr/dims/) · [uomoathens.github.io](https://uomoathens.github.io/)
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23565223.svg)](https://doi.org/10.5281/zenodo.23565223)
+
 This repository contains the evaluation protocol, feature extractor and tooling behind the static file classifier of AegisOne, an endpoint protection prototype for Windows. It is published as a research artefact. The product itself is not included.
 
 The central claim is methodological. Static malware classifiers are routinely reported with random train/test splits, accuracy or AUC, and point estimates of the false-positive rate. Each of these flatters the model. This repository implements the alternative end to end and makes every step checkable:
@@ -126,7 +128,11 @@ Schema v1 uses static content and header features only. It can separate packed, 
 
 ## Citation
 
-See [CITATION.cff](CITATION.cff).
+This repository is archived on Zenodo:
+
+> Sargiotis, D. (2026). *AegisOne Guardian: leakage-resistant evaluation of a static malware classifier* (Version v0.1.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23565223
+
+See also [CITATION.cff](CITATION.cff).
 
 ## Licence
 

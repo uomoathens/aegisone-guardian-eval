@@ -6,9 +6,11 @@ authors:
   - family-names: Sargiotis
     given-names: Dimitrios
     affiliation: "National Technical University of Athens"
+    orcid: "https://orcid.org/0009-0006-3644-4561"
 license: MIT
 version: 0.1.0
-date-released: "2026-10-13"
+doi: 10.5281/zenodo.23565223
+date-released: "2026-10-22"
 keywords:
   - malware detection
   - machine learning evaluation
